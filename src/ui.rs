@@ -1,19 +1,21 @@
 use std::borrow::Cow;
 
 use bevy::prelude::*;
+use bevy::render::wireframe::WireframeConfig;
+
+use crate::{plugin::EditorState, systems::EditorEvent, EditorSettings, WireframeMode};
 use bevy_inspector_egui::{
     bevy_egui::EguiContext,
     egui::{self, menu},
     Context, Inspectable, WorldInspectorParams,
 };
 
-use crate::{plugin::EditorState, systems::EditorEvent, EditorSettings};
-
 pub(crate) fn menu_system(
     egui_context: Res<EguiContext>,
     mut editor_settings: ResMut<EditorSettings>,
     mut editor_events: ResMut<Events<EditorEvent>>,
     mut inspector_params: ResMut<WorldInspectorParams>,
+    mut wireframe_config: ResMut<WireframeConfig>,
 ) {
     egui::TopPanel::top("editor-pls top panel").show(&egui_context.ctx, |ui| {
         menu::bar(ui, |ui| {
@@ -23,6 +25,21 @@ pub(crate) fn menu_system(
                     ui.end_row();
                     checkbox(ui, &mut editor_settings.click_to_inspect, "Click to inspect");
                     ui.end_row();
+
+                    // ui.label("Wireframe mode");
+                    // let context = bevy_inspector_egui::Context::new_shared(&egui_context.ctx);
+                    // editor_settings.wireframe_mode.ui(ui, (), &context);
+                    let mut enable_wireframe = match editor_settings.wireframe_mode {
+                        WireframeMode::None => false,
+                        WireframeMode::WithWireframeComponent => todo!(),
+                        WireframeMode::All => true,
+                    };
+                    checkbox(ui, &mut enable_wireframe, "Wireframes");
+                    editor_settings.wireframe_mode = match enable_wireframe {
+                        false => WireframeMode::None,
+                        true => WireframeMode::All,
+                    };
+                    wireframe_config.global = enable_wireframe;
                 });
             });
 

@@ -41,4 +41,4 @@ mod ui;
 
 pub use bevy_mod_picking;
 
-pub use plugin::{EditorPlugin, EditorSettings};
+pub use plugin::{EditorPlugin, EditorSettings, WireframeMode};

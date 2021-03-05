@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use bevy_inspector_egui::{WorldInspectorParams, WorldInspectorPlugin};
+use bevy::render::wireframe::{WireframePlugin, WireframeConfig};
+use bevy::wgpu::{WgpuFeature, WgpuFeatures, WgpuOptions};
+
+use bevy_inspector_egui::{Inspectable, WorldInspectorParams, WorldInspectorPlugin};
 use bevy_mod_picking::{pick_labels::MESH_FOCUS, InteractablePickingPlugin, PickingPlugin, PickingPluginState};
 
 use crate::{
@@ -13,6 +16,17 @@ pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut AppBuilder) {
+        // bevy plugins
+        app.insert_resource(WgpuOptions {
+            features: WgpuFeatures {
+                // The Wireframe requires NonFillPolygonMode feature
+                features: vec![WgpuFeature::NonFillPolygonMode],
+            },
+            ..Default::default()
+        });
+        app.add_plugin(WireframePlugin);
+
+
         // bevy-inspector-egui
         app.insert_resource(WorldInspectorParams {
             enabled: false,
@@ -26,9 +40,21 @@ impl Plugin for EditorPlugin {
         };
 
         // resources
-        app.init_resource::<EditorSettings>()
-            .init_resource::<EditorState>()
-            .add_event::<EditorEvent>();
+        app.init_resource::<EditorState>().add_event::<EditorEvent>();
+
+        {
+            let resources = app.resources_mut();
+            let editor_settings = resources.get_or_insert_with(EditorSettings::default);
+            let global_wireframe = match editor_settings.wireframe_mode {
+                WireframeMode::None => false,
+                WireframeMode::WithWireframeComponent => false,
+                WireframeMode::All => true,
+            };
+            drop(editor_settings);
+            // resources.get_mut::<WireframeConfig>().unwrap().global = global_wireframe;
+            dbg!();
+            resources.get_mut::<WireframeConfig>().unwrap().global = true;
+        }
 
         // systems
         app.add_system(menu_system.system());
@@ -50,12 +76,20 @@ pub struct EditorState {
 
 pub type ExclusiveAccessFn = Box<dyn Fn(&mut World, &mut Resources) + Send + Sync + 'static>;
 
+#[derive(Inspectable, Debug, Copy, Clone)]
+pub enum WireframeMode {
+    None,
+    WithWireframeComponent,
+    All,
+}
+
 /// Configuration for for editor
 pub struct EditorSettings {
     pub(crate) events_to_send: Vec<(String, ExclusiveAccessFn)>,
     pub(crate) state_transition_handlers: Vec<(String, ExclusiveAccessFn)>,
     /// controls whether clicking meshes with a [PickableBundle](bevy_mod_picking::PickableBundle) opens the inspector
     pub click_to_inspect: bool,
+    pub wireframe_mode: WireframeMode,
 }
 impl Default for EditorSettings {
     fn default() -> Self {
@@ -63,6 +97,7 @@ impl Default for EditorSettings {
             events_to_send: Default::default(),
             state_transition_handlers: Default::default(),
             click_to_inspect: false,
+            wireframe_mode: WireframeMode::None,
         }
     }
 }
