@@ -3,7 +3,7 @@ use bevy::{
     prelude::*,
     render::{camera::Camera, render_graph::base::camera},
 };
-use bevy_fly_camera::FlyCamera;
+use bevy_fly_camera::{FlyCamera, FlyCamera2d};
 use bevy_mod_picking::{PickableBundle, PickableMesh, PickingCamera, PickingCameraBundle};
 use bevy_orbit_controls::OrbitCamera;
 
@@ -103,20 +103,30 @@ pub fn make_camera_picksource(
 pub fn make_cam_flycam(
     editor_settings: Res<EditorSettings>,
     mut commands: Commands,
-    mut query: Query<(Entity, &Camera), Without<FlyCamera>>,
+    mut query: Query<(Entity, &Camera), (Without<FlyCamera>, Without<FlyCamera2d>)>,
 ) {
     if !editor_settings.auto_flycam {
         return;
     }
 
     for (entity, cam) in query.iter_mut() {
-        if cam.name.as_ref().map_or(false, |name| name == camera::CAMERA_3D) {
-            commands.entity(entity).insert(FlyCamera {
-                enabled: editor_settings.fly_camera,
-                sensitivity: 6.0,
-                only_if_mouse_down: Some(MouseButton::Left),
-                ..Default::default()
-            });
+        match cam.name.as_deref() {
+            Some(camera::CAMERA_3D) => {
+                commands.entity(entity).insert(FlyCamera {
+                    enabled: editor_settings.fly_camera,
+                    sensitivity: 6.0,
+                    only_if_mouse_down: Some(MouseButton::Left),
+                    ..Default::default()
+                });
+            }
+            Some(camera::CAMERA_2D) => {
+                debug!("Auto-adding 2d fly camera");
+                commands.entity(entity).insert(FlyCamera2d {
+                    enabled: true,
+                    ..Default::default()
+                });
+            }
+            _ => {}
         }
     }
 }
